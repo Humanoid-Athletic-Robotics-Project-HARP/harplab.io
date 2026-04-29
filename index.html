@@ -5,51 +5,104 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Test Index</title>
   <style>
-    body {
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; }
+    canvas { display: block; }
+    #label {
+      color: #fff;
       font-family: Arial, sans-serif;
-      margin: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      background: #f0f4f8;
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      box-shadow: 0 16px 40px rgba(0,0,0,0.08);
-      padding: 32px;
-      max-width: 520px;
-      text-align: center;
-    }
-    h1 {
-      margin: 0 0 16px;
-      color: #1a202c;
-    }
-    p {
-      margin: 0 0 24px;
-      color: #4a5568;
-      line-height: 1.6;
-    }
-    a {
-      display: inline-block;
-      padding: 12px 24px;
-      border-radius: 999px;
-      background: #2563eb;
-      color: white;
-      text-decoration: none;
-      transition: background 0.2s ease;
-    }
-    a:hover {
-      background: #1d4ed8;
+      font-size: 14px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 16px 0;
+      opacity: 0.6;
     }
   </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
 </head>
 <body>
-  <div class="card">
-    <h1>Test Index Page</h1>
-    <p>This is a test HTML page created to verify the site is loading correctly.</p>
-    <a href="#" onclick="alert('Test page loaded successfully!'); return false;">Run Test</a>
-  </div>
+<div id="label">Under Maintenance</div>
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+  const label = document.getElementById('label');
+
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1;
+  document.body.insertBefore(renderer.domElement, label);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x000000);
+
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.01, 1000);
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment()).texture;
+
+  let pivot = null;
+
+  new GLTFLoader().load('angry_guy.glb', (gltf) => {
+    pivot = new THREE.Group();
+    scene.add(pivot);
+    pivot.add(gltf.scene);
+
+    gltf.scene.traverse((child) => {
+      if (child.isMesh) {
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        mats.forEach((mat) => {
+          if (mat.transmission > 0) {
+            mat.transparent = true;
+            if (!mat.thickness) mat.thickness = 0.5;
+            mat.needsUpdate = true;
+          }
+        });
+      }
+    });
+
+    const box = new THREE.Box3().setFromObject(gltf.scene);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    gltf.scene.position.sub(center);
+
+    camera.position.set(0, 0, maxDim * 2);
+    camera.near = maxDim * 0.01;
+    camera.far = maxDim * 100;
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  });
+
+  function resize() {
+    const labelH = label.offsetHeight;
+    const w = window.innerWidth;
+    const h = window.innerHeight - labelH;
+    renderer.setSize(w, h);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  const clock = new THREE.Clock();
+  const RPM = 1 / 10;
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    if (pivot) pivot.rotation.y += (2 * Math.PI * RPM) * clock.getDelta();
+    renderer.render(scene, camera);
+  })();
+</script>
 </body>
 </html>
