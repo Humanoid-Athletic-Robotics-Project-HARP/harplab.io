@@ -38,7 +38,7 @@
 </head>
 <body>
 <div id="ticker"><span id="ticker-inner"></span></div>
-<div id="label">Under Maintenance</div>
+<div id="label">This page either does not exist or is under maintenance</div>
 <script type="module">
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
@@ -71,6 +71,7 @@
 
   let pivot = null;
   let matrixMat = null;
+  let mat404 = null;
   const heads = [];
 
   const HEAD_COUNT = 42;
@@ -127,6 +128,35 @@
       }
     });
 
+    const cvs404 = document.createElement('canvas');
+    cvs404.width = 1024; cvs404.height = 512;
+    const ctx = cvs404.getContext('2d');
+    ctx.font = 'bold 420px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // outer glow
+    ctx.shadowColor = 'rgba(255, 0, 0, 0.5)';
+    ctx.shadowBlur = 90;
+    ctx.fillStyle = 'rgba(180, 0, 0, 0.3)';
+    ctx.fillText('404', 512, 256);
+    // mid glow
+    ctx.shadowBlur = 60;
+    ctx.fillStyle = 'rgba(220, 20, 20, 0.55)';
+    ctx.fillText('404', 512, 256);
+    // core
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = 'rgba(255, 80, 80, 1)';
+    ctx.fillStyle = 'rgba(255, 70, 70, 0.85)';
+    ctx.fillText('404', 512, 256);
+    const plane404 = new THREE.Mesh(
+      new THREE.PlaneGeometry(maxDim * 5, maxDim * 2.5),
+      new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(cvs404), transparent: true, side: THREE.DoubleSide, depthWrite: false })
+    );
+    plane404.position.set(0, 0, radius);
+    plane404.rotation.y = Math.PI;
+    scene.add(plane404);
+    mat404 = plane404.material;
+
     camera.position.set(0, 0, 0);
     camera.near = maxDim * 0.1;
     camera.far = radius * 6;
@@ -160,7 +190,9 @@
       h.rotation.z += h.userData.spin.z * delta;
     });
 
-    if (matrixMat) matrixMat.emissiveIntensity = Math.abs(Math.sin(clock.getElapsedTime() * 1) + 0.5) * 2;
+    const pulse = 1.5 * Math.abs(Math.sin(clock.getElapsedTime()));
+    if (matrixMat) matrixMat.emissiveIntensity = pulse * 2;
+    if (mat404) mat404.opacity = pulse * 0.75;
 
     if (!tickerPausing) {
       tickerX -= TICKER_SPEED * delta;
