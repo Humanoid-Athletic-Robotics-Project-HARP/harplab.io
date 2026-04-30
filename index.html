@@ -51,12 +51,49 @@
   scene.environment = pmrem.fromScene(new RoomEnvironment()).texture;
 
   let pivot = null;
+  let matrixMat = null;
+  const heads = [];
 
-  new GLTFLoader().load('angry_guy.glb', (gltf) => {
+  const HEAD_COUNT = 42;
+
+  function randRate() { return (Math.random() - 0.5) * 0.4; }
+
+  function fibonacciSphere(n, radius) {
+    const pts = [];
+    const golden = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < n; i++) {
+      const y = 1 - (i / (n - 1)) * 2;
+      const r = Math.sqrt(1 - y * y);
+      const theta = golden * i;
+      pts.push(new THREE.Vector3(Math.cos(theta) * r * radius, y * radius, Math.sin(theta) * r * radius));
+    }
+    return pts;
+  }
+
+  new GLTFLoader().load('models/under_construction.glb', (gltf) => {
+    const box = new THREE.Box3().setFromObject(gltf.scene);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    gltf.scene.position.sub(center);
+
+    const radius = maxDim * 3;
     pivot = new THREE.Group();
     scene.add(pivot);
-    pivot.add(gltf.scene);
 
+    const up = new THREE.Vector3(0, 1, 0);
+
+    fibonacciSphere(HEAD_COUNT, radius).forEach((pos) => {
+      const clone = gltf.scene.clone(true);
+      clone.position.copy(pos);
+      clone.quaternion.setFromUnitVectors(up, pos.clone().normalize());
+      clone.userData.spin = { x: randRate(), y: randRate(), z: randRate() };
+      pivot.add(clone);
+      heads.push(clone);
+    });
+
+    // Materials are shared across clones — one ref updates all
     gltf.scene.traverse((child) => {
       if (child.isMesh) {
         const mats = Array.isArray(child.material) ? child.material : [child.material];
@@ -66,21 +103,15 @@
             if (!mat.thickness) mat.thickness = 0.5;
             mat.needsUpdate = true;
           }
+          if (mat.name === 'MatrixDisplay') matrixMat = mat;
         });
       }
     });
 
-    const box = new THREE.Box3().setFromObject(gltf.scene);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-
-    gltf.scene.position.sub(center);
-
-    camera.position.set(0, 0, maxDim * 2);
-    camera.near = maxDim * 0.01;
-    camera.far = maxDim * 100;
-    camera.lookAt(0, 0, 0);
+    camera.position.set(0, 0, 0);
+    camera.near = maxDim * 0.1;
+    camera.far = radius * 6;
+    camera.lookAt(0, 0, radius);
     camera.updateProjectionMatrix();
   });
 
@@ -96,11 +127,21 @@
   resize();
 
   const clock = new THREE.Clock();
-  const RPM = 1 / 10;
+  const RPM = 1 / 25;
 
   (function animate() {
     requestAnimationFrame(animate);
-    if (pivot) pivot.rotation.y += (2 * Math.PI * RPM) * clock.getDelta();
+    const delta = clock.getDelta();
+    if (pivot) pivot.rotation.y += (1 * Math.PI * RPM) * delta;
+    if (pivot) pivot.rotation.x += (0.25 * Math.PI * RPM) * delta;
+    // if (pivot) pivot.rotation.z += (0.5 * Math.PI * RPM) * delta;
+    heads.forEach((h) => {
+      h.rotation.x += h.userData.spin.x * delta;
+      h.rotation.y += h.userData.spin.y * delta;
+      h.rotation.z += h.userData.spin.z * delta;
+    });
+
+    if (matrixMat) matrixMat.emissiveIntensity = Math.abs(Math.sin(clock.getElapsedTime() * 1) + 0.5) * 2;
     renderer.render(scene, camera);
   })();
 </script>
