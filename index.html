@@ -7,16 +7,25 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { background: #000; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; }
-    canvas { display: block; }
-    #label {
+    canvas { display: block; flex: 1; min-height: 0; }
+    #ticker, #label {
       color: #fff;
       font-family: Arial, sans-serif;
-      font-size: 14px;
       letter-spacing: 0.15em;
       text-transform: uppercase;
       padding: 16px 0;
       opacity: 0.6;
+      width: 100%;
+      text-align: center;
     }
+    #ticker { font-size: 14px; }
+    #label { font-size: 17px; }
+    #ticker {
+      overflow: hidden;
+      white-space: nowrap;
+      position: relative;
+    }
+    #ticker span { display: inline-block; will-change: transform; }
   </style>
   <script type="importmap">
   {
@@ -28,6 +37,7 @@
   </script>
 </head>
 <body>
+<div id="ticker"><span id="ticker-inner"></span></div>
 <div id="label">Under Maintenance</div>
 <script type="module">
   import * as THREE from 'three';
@@ -35,6 +45,15 @@
   import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
   const label = document.getElementById('label');
+
+  const tickerSpan = document.getElementById('ticker-inner');
+  fetch('ticker.txt').then(r => r.text()).then(t => { tickerSpan.textContent = t.trim(); });
+
+  let tickerX = window.innerWidth;
+  let tickerPausing = false;
+  let tickerPauseTimer = 0;
+  const TICKER_SPEED = 50;
+  const TICKER_PAUSE = 4;
 
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
@@ -142,6 +161,22 @@
     });
 
     if (matrixMat) matrixMat.emissiveIntensity = Math.abs(Math.sin(clock.getElapsedTime() * 1) + 0.5) * 2;
+
+    if (!tickerPausing) {
+      tickerX -= TICKER_SPEED * delta;
+      if (tickerX < -tickerSpan.offsetWidth) {
+        tickerPausing = true;
+        tickerPauseTimer = TICKER_PAUSE;
+      }
+    } else {
+      tickerPauseTimer -= delta;
+      if (tickerPauseTimer <= 0) {
+        tickerPausing = false;
+        tickerX = window.innerWidth;
+      }
+    }
+    tickerSpan.style.transform = `translateX(${tickerX}px)`;
+
     renderer.render(scene, camera);
   })();
 </script>
