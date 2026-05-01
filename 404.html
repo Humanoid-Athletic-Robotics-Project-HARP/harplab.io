@@ -47,7 +47,7 @@
   const label = document.getElementById('label');
 
   const tickerSpan = document.getElementById('ticker-inner');
-  fetch('ticker.txt').then(r => r.text()).then(t => { tickerSpan.textContent = t.trim(); });
+  fetch('/ticker.txt').then(r => r.ok ? r.text() : '').then(t => { if (t) tickerSpan.textContent = t.trim(); });
 
   let tickerX = window.innerWidth;
   let tickerPausing = false;
@@ -87,10 +87,10 @@
       const theta = golden * i;
       pts.push(new THREE.Vector3(Math.cos(theta) * r * radius, y * radius, Math.sin(theta) * r * radius));
     }
-    return pts;
+    return pts.slice(1, -1);
   }
 
-  new GLTFLoader().load('models/under_construction.glb', (gltf) => {
+  new GLTFLoader().load('/models/under_construction.glb', (gltf) => {
     const box = new THREE.Box3().setFromObject(gltf.scene);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
@@ -137,16 +137,16 @@
     // outer glow
     ctx.shadowColor = 'rgba(255, 0, 0, 0.5)';
     ctx.shadowBlur = 90;
-    ctx.fillStyle = 'rgba(180, 0, 0, 0.3)';
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
     ctx.fillText('404', 512, 256);
     // mid glow
     ctx.shadowBlur = 60;
-    ctx.fillStyle = 'rgba(220, 20, 20, 0.55)';
+    ctx.fillStyle = 'rgba(255, 10, 10, 0.55)';
     ctx.fillText('404', 512, 256);
     // core
     ctx.shadowBlur = 30;
-    ctx.shadowColor = 'rgba(255, 80, 80, 1)';
-    ctx.fillStyle = 'rgba(255, 70, 70, 0.85)';
+    ctx.shadowColor = 'rgba(255, 20, 20, 1)';
+    ctx.fillStyle = 'rgba(255, 30, 30, 0.85)';
     ctx.fillText('404', 512, 256);
     const plane404 = new THREE.Mesh(
       new THREE.PlaneGeometry(maxDim * 5, maxDim * 2.5),
