@@ -20,6 +20,36 @@
     }
     #ticker { font-size: 14px; }
     #label { font-size: 17px; }
+    #loader {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 10;
+      transition: opacity 0.4s;
+    }
+    #loader.hidden { opacity: 0; pointer-events: none; }
+    #loader-text {
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      opacity: 0.5;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid rgba(255,255,255,0.15);
+      border-top-color: rgba(255,255,255,0.6);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     #ticker {
       overflow: hidden;
       white-space: nowrap;
@@ -37,6 +67,10 @@
   </script>
 </head>
 <body>
+<div id="loader">
+  <div class="spinner"></div>
+  <span id="loader-text">Loading</span>
+</div>
 <div id="ticker"><span id="ticker-inner"></span></div>
 <div id="label">This page either does not exist or is under maintenance</div>
 <script type="module">
@@ -162,6 +196,10 @@
     camera.far = radius * 6;
     camera.lookAt(0, 0, radius);
     camera.updateProjectionMatrix();
+
+    const loaderEl = document.getElementById('loader');
+    loaderEl.classList.add('hidden');
+    loaderEl.addEventListener('transitionend', () => loaderEl.remove(), { once: true });
   });
 
   function resize() {
