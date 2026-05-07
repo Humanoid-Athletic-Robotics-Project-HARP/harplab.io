@@ -14,7 +14,8 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      justify-content: center;
+      justify-content: flex-start;
+      padding-top: 8vh;
       padding-left: 8vw;
       pointer-events: none;
       z-index: 1;
@@ -64,12 +65,98 @@
       letter-spacing: 0.12em;
       opacity: 0.7;
     }
-    #about-panel, #home-panel {
+    #about-panel, #home-panel, #team-panel {
       display: none;
       flex-direction: column;
       pointer-events: all;
     }
+    #team-panel {
+      position: fixed;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      gap: 48px;
+    }
+    #wheel-wrap {
+      perspective: 1200px;
+      cursor: grab;
+      user-select: none;
+    }
+    #wheel-wrap:active { cursor: grabbing; }
+    #wheel {
+      position: relative;
+      width: 150px;
+      height: 150px;
+      transform-style: preserve-3d;
+    }
+    .card {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .card-portrait {
+      width: 150px;
+      height: 150px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .card-portrait img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .card-name {
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .card-title {
+      color: rgba(255,255,255,0.45);
+      font-family: Arial, sans-serif;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-align: center;
+      white-space: nowrap;
+    }
+    #team-panel a.back {
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: clamp(12px, 1.4vw, 18px);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      text-decoration: none;
+      opacity: 0.4;
+      position: fixed;
+      bottom: 60px;
+      left: 8vw;
+    }
+    #team-panel a.back:hover { opacity: 1; }
     #about-panel { gap: clamp(12px, 2.5vh, 32px); }
+    #about-scroll {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(12px, 2.5vh, 32px);
+      max-height: calc(100vh - 8vh - 120px - 32px - 80px);
+      overflow-y: auto;
+      padding-right: 12px;
+      scrollbar-color: rgba(255,255,255,0.7) rgba(255,255,255,0.1);
+      scrollbar-width: thin;
+    }
+    #about-scroll::-webkit-scrollbar { width: 4px; }
+    #about-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.1); }
+    #about-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.7); border-radius: 2px; }
     #home-panel  { gap: 24px; }
     #about-panel p {
       color: #fff;
@@ -155,23 +242,185 @@
   <div id="home-panel">
     <nav>
       <a href="#about"><span class="nav-label">About</span><span class="nav-num">00</span></a>
-      <a href="/team"><span class="nav-label">Team</span><span class="nav-num">01</span></a>
+      <a href="#team"><span class="nav-label">Team</span><span class="nav-num">01</span></a>
       <a href="/research"><span class="nav-label">Research</span><span class="nav-num">02</span></a>
       <a href="/contact"><span class="nav-label">Contact</span><span class="nav-num">03</span></a>
     </nav>
   </div>
+  <div id="team-panel">
+    <div id="wheel-wrap"><div id="wheel"></div></div>
+    <a class="back" href="#">&#8592; Back</a>
+  </div>
   <div id="about-panel">
-    <p>The Humanoid Athletic Robotics Project (HARP) is a team of students from Stanford Student Robotics with the eponymous mission of training humanoid robots to move, react, and coordinate like humans can through learning-based control, real-time perception, and dynamic whole-body coordination.</p>
-    <p>Humanoid platforms remain difficult to access for most student researchers due to the technical and financial barriers involved. HARP exists to change that. By building on Stanford's collaborative research environment, we aim to lower those barriers and create a shared platform for experimentation in athletic and dynamic robotics, a domain that demands exactly the kind of balance, adaptation, and real-time decision-making that makes humanoid research hard. Our long-term goal is to push the frontier of what student-driven humanoid robotics can achieve, from on-campus demonstrations to international stages.</p>
+    <div id="about-scroll">
+      <p>The Humanoid Athletic Robotics Project (HARP) is a team of students from Stanford Student Robotics with the eponymous mission of training humanoid robots to move, react, and coordinate like humans can through learning-based control, real-time perception, and dynamic whole-body coordination.</p>
+      <p>Humanoid platforms remain difficult to access for most student researchers due to the technical and financial barriers involved. HARP exists to change that. By building on Stanford's collaborative research environment, we aim to lower those barriers and create a shared platform for experimentation in athletic and dynamic robotics, a domain that demands exactly the kind of balance, adaptation, and real-time decision-making that makes humanoid research hard. Our long-term goal is to push the frontier of what student-driven humanoid robotics can achieve, from on-campus demonstrations to international stages.</p>
+    </div>
     <a class="back" href="#">&#8592; Back</a>
   </div>
 </div>
 <script>
-  const homePanel  = document.getElementById('home-panel');
-  const aboutPanel = document.getElementById('about-panel');
+  const homePanel   = document.getElementById('home-panel');
+  const aboutPanel  = document.getElementById('about-panel');
+  const teamPanel   = document.getElementById('team-panel');
+  const aboutScroll = document.getElementById('about-scroll');
   const h1 = document.querySelector('h1');
 
-  const panels = { '': homePanel, '#': homePanel, '#about': aboutPanel };
+  // — wheel setup —
+  // Fixed DOM slots regardless of member count — data cycles through back-half invisibly.
+  const SLOTS = 12;
+  const HALF  = Math.floor(SLOTS / 2);
+  const slotAngle   = (2 * Math.PI) / SLOTS;
+  const WHEEL_RADIUS = Math.round((210) / (2 * Math.sin(Math.PI / SLOTS))); // ~348px
+
+  const wheelEl   = document.getElementById('wheel');
+  const wheelWrap = document.getElementById('wheel-wrap');
+  const cards = [];
+  const slotContent = new Array(SLOTS).fill(-1); // memberIdx currently in each slot
+  let members = [];
+  let frontMemberIdx = 0;
+  let prevStep = 0;
+
+  // Build fixed DOM slots once
+  for (let i = 0; i < SLOTS; i++) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `<div class="card-portrait"></div>
+      <span class="card-name"></span>
+      <span class="card-title"></span>`;
+    card.style.transform = `rotateY(${i * slotAngle}rad) translateZ(${WHEEL_RADIUS}px)`;
+    wheelEl.appendChild(card);
+    cards.push(card);
+  }
+
+  function setSlot(slotIdx, memberIdx) {
+    if (slotContent[slotIdx] === memberIdx) return;
+    slotContent[slotIdx] = memberIdx;
+    const c = cards[slotIdx];
+    if (memberIdx < 0 || memberIdx >= members.length) {
+      c.style.visibility = 'hidden';
+      return;
+    }
+    c.style.visibility = 'visible';
+    const m = members[memberIdx];
+    c.querySelector('.card-portrait').innerHTML = m.portrait ? `<img src="${m.portrait}" alt="${m.name}">` : '';
+    c.querySelector('.card-name').textContent  = m.name;
+    c.querySelector('.card-title').textContent = m.title;
+  }
+
+  function loadMembers(list) {
+    members = list;
+    frontMemberIdx = 0;
+    prevStep = 0;
+    slotContent.fill(-999);
+    for (let i = 0; i < SLOTS; i++) {
+      // Slots 0..HALF are i steps ahead of front; slots HALF+1..SLOTS-1 are behind (negative = empty)
+      setSlot(i, i <= HALF ? i : i - SLOTS);
+    }
+  }
+
+  // Called each frame: feeds data into the back-half slot as the wheel turns (non-looping).
+  function syncSlots() {
+    if (!members.length) return;
+    const M = members.length;
+    const rawStep    = Math.round(-wheelAngle / slotAngle);
+    const clampedStep = Math.max(0, Math.min(M - 1, rawStep));
+    const delta = clampedStep - prevStep;
+    if (delta === 0) return;
+    for (let s = 0; s < Math.abs(delta); s++) {
+      const dir = delta > 0 ? 1 : -1;
+      prevStep += dir;
+      frontMemberIdx = Math.max(0, Math.min(M - 1, frontMemberIdx + dir));
+      const frontSlot = ((prevStep % SLOTS) + SLOTS) % SLOTS;
+      const backSlot  = (frontSlot + HALF) % SLOTS;
+      // target may be out of range — setSlot will hide it
+      setSlot(backSlot, dir > 0 ? frontMemberIdx + HALF : frontMemberIdx - HALF);
+    }
+  }
+
+  fetch('/team/members.csv')
+    .then(r => r.text())
+    .then(text => {
+      const parsed = text.trim().split('\n').slice(1).map(line => {
+        const [portrait, name, title] = line.split(',').map(s => s.trim());
+        return { portrait: portrait || '', name: name || '', title: title || '' };
+      }).filter(m => m.name);
+      loadMembers(parsed);
+    })
+    .catch(() => {});
+
+  let wheelAngle = 0, wheelVel = 0;
+  let dragActive = false, lastDragX = 0;
+
+  wheelWrap.addEventListener('mousedown', e => { dragActive = true; lastDragX = e.clientX; e.preventDefault(); });
+  window.addEventListener('mousemove', e => {
+    if (!dragActive) return;
+    wheelVel += (e.clientX - lastDragX) * 0.008;
+    lastDragX = e.clientX;
+  });
+  window.addEventListener('mouseup', () => { dragActive = false; });
+  wheelWrap.addEventListener('touchstart', e => { dragActive = true; lastDragX = e.touches[0].clientX; }, { passive: true });
+  window.addEventListener('touchmove', e => {
+    if (!dragActive) return;
+    wheelVel += (e.touches[0].clientX - lastDragX) * 0.008;
+    lastDragX = e.touches[0].clientX;
+  }, { passive: true });
+  window.addEventListener('touchend', () => { dragActive = false; });
+
+  const BOOST_ANGLE = 20 * Math.PI / 180; // ±10° window around front
+  const BOOST_FACTOR = 0.25;              // max extra scale at 0° (so front card is 1.45×)
+
+  function updateCardScales() {
+    const TWO_PI = Math.PI * 2;
+    for (let i = 0; i < SLOTS; i++) {
+      const screenAngle = ((wheelAngle + i * slotAngle) % TWO_PI + TWO_PI) % TWO_PI;
+      const dist = Math.min(screenAngle, TWO_PI - screenAngle); // 0..π, 0 = front
+      const t = dist < BOOST_ANGLE ? 0.5 * (1 + Math.cos(dist * Math.PI / BOOST_ANGLE)) : 0;
+      const s = (1 + BOOST_FACTOR * t).toFixed(4);
+      cards[i].style.transform = `rotateY(${i * slotAngle}rad) translateZ(${WHEEL_RADIUS}px) scale(${s})`;
+    }
+  }
+
+  const BOUNDARY_STIFFNESS = 4; // spring pull-back strength
+  const BOUNDARY_DAMPING   = 0.78; // extra damping when out of bounds
+
+  let lastWheelTs = 0;
+  (function tickWheel(ts) {
+    requestAnimationFrame(tickWheel);
+    const dt = Math.min((ts - lastWheelTs) / 1000, 0.05);
+    lastWheelTs = ts;
+
+    if (members.length) {
+      const minAngle = -(members.length - 1) * slotAngle;
+      const maxAngle = 0;
+      if (wheelAngle > maxAngle) {
+        wheelVel += (maxAngle - wheelAngle) * BOUNDARY_STIFFNESS * dt;
+        wheelVel *= Math.pow(BOUNDARY_DAMPING, dt * 60);
+      } else if (wheelAngle < minAngle) {
+        wheelVel += (minAngle - wheelAngle) * BOUNDARY_STIFFNESS * dt;
+        wheelVel *= Math.pow(BOUNDARY_DAMPING, dt * 60);
+      }
+    }
+
+    wheelAngle += wheelVel;
+    wheelVel *= Math.pow(0.90, dt * 60);
+    wheelEl.style.transform = `rotateY(${wheelAngle}rad)`;
+    updateCardScales();
+    syncSlots();
+  })(0);
+
+  // — scroll forwarding —
+  window.addEventListener('wheel', e => {
+    const hash = window.location.hash;
+    if (hash === '#about') {
+      aboutScroll.scrollTop += e.deltaY;
+    } else if (hash === '#team') {
+      wheelVel += e.deltaY * 0.001;
+    }
+  }, { passive: true });
+
+  // — routing —
+  const panels = { '': homePanel, '#': homePanel, '#about': aboutPanel, '#team': teamPanel };
   let activePanel = null;
 
   function showPanel(next, animate) {
@@ -283,6 +532,7 @@
   const jitterRotVel    = new THREE.Vector3();
   const jitterRotOffset = new THREE.Vector3();
   let baseX = 0, targetBaseX = 0;
+  let pivotZ = 0, pivotZVel = 0;
   let breathY = 0, breathTimer = 0, breathSign = 1;
   const emissiveMats = []; // { mat, base } — base is original emissiveIntensity
 
@@ -313,6 +563,9 @@
   const JITTER_ROTATION_STIFFNESS = 1600;
   const JITTER_ROTATION_DAMPING   = 0.90;  // >0.83 = boioioing
 
+  const MOVE_SENSITIVITY_X = 0.24;
+  const MOVE_SENSITIVITY_Y = 0.2;
+
   new GLTFLoader().load('/models/angry_guy.glb', gltf => {
     head = gltf.scene;
 
@@ -321,7 +574,7 @@
 
     head.position.sub(box.getCenter(new THREE.Vector3()));
 
-    head.scale.setScalar((VIEW_H * 0.55) / maxDim);
+    head.scale.setScalar((VIEW_H * 0.6875) / maxDim);
     collectEmissive(head);
 
     pivot = new THREE.Group();
@@ -341,7 +594,7 @@
       const box2 = new THREE.Box3().setFromObject(surprisedHead);
       surprisedHead.position.sub(box2.getCenter(new THREE.Vector3()));
       const maxDim2 = Math.max(...box2.getSize(new THREE.Vector3()).toArray());
-      surprisedHead.scale.setScalar((VIEW_H * 0.55) / maxDim2);
+      surprisedHead.scale.setScalar((VIEW_H * 0.6875) / maxDim2);
       surprisedHead.visible = false;
       collectEmissive(surprisedHead);
       pivot.add(surprisedHead);
@@ -352,7 +605,7 @@
       const box3 = new THREE.Box3().setFromObject(satisfiedHead);
       satisfiedHead.position.sub(box3.getCenter(new THREE.Vector3()));
       const maxDim3 = Math.max(...box3.getSize(new THREE.Vector3()).toArray());
-      satisfiedHead.scale.setScalar((VIEW_H * 0.55) / maxDim3);
+      satisfiedHead.scale.setScalar((VIEW_H * 0.6875) / maxDim3);
       satisfiedHead.visible = false;
       collectEmissive(satisfiedHead);
       pivot.add(satisfiedHead);
@@ -405,11 +658,20 @@
     const dt = Math.min(clock.getDelta(), 0.05);
 
     if (head) {
-      const halfH = Math.tan((50 / 2) * Math.PI / 180) * camera.position.z;
+      const hash = window.location.hash;
+      const camDist = camera.position.z - pivotZ;
+      const halfH = Math.tan((50 / 2) * Math.PI / 180) * camDist;
       const halfW = halfH * camera.aspect;
 
-      // Base position: center on home, 75% right on #about
-      targetBaseX = (window.location.hash === '#about') ? halfW * 0.4 : 0;
+      // Z spring: head recedes on #team
+      const targetPivotZ = (hash === '#team') ? -1.5 : 0;
+      pivotZVel += (targetPivotZ - pivotZ) * POSITION_STIFFNESS * dt;
+      pivotZVel *= Math.pow(POSITION_DAMPING, dt * 60);
+      pivotZ += pivotZVel * dt;
+      pivot.position.z = pivotZ;
+
+      // Base X: shift right on #about, center elsewhere
+      targetBaseX = (hash === '#about') ? halfW * 0.4 : 0;
       baseX += (targetBaseX - baseX) * (1 - Math.exp(-dt / 0.3));
 
       // Mouse speed → satisfied state machine
@@ -440,8 +702,9 @@
       bloomPass.strength = 0.5 + breathY * 5;
 
       // Mouse position spring → mousePos
-      const targetX = baseX + mouse.x * halfW * 0.24;
-      const targetY = mouse.y * halfH * 0.2 + breathY;
+      const sensitivityScale = (hash === '#about' || hash === '#team') ? 0.5 : 1;
+      const targetX = baseX + mouse.x * halfW * MOVE_SENSITIVITY_X * sensitivityScale;
+      const targetY = mouse.y * halfH * MOVE_SENSITIVITY_Y * sensitivityScale + breathY;
       pivotVel.x += (targetX - mousePos.x) * POSITION_STIFFNESS * dt;
       pivotVel.x *= Math.pow(POSITION_DAMPING, dt * 60);
       mousePos.x += pivotVel.x * dt;
