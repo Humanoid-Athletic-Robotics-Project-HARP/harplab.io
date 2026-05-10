@@ -6,15 +6,8 @@
   <title>HARP</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #070000; overflow: hidden; }
+    body { background: #000; overflow: hidden; }
     canvas { position: fixed; top: 0; left: 0; display: block; z-index: 0; }
-    #grid-bg {
-      position: fixed;
-      inset: 0;
-      z-index: -1;
-      background-color: #070000;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='50' height='50'%3E%3Cline x1='25' y1='21' x2='25' y2='29' stroke='%23520000' stroke-width='1'/%3E%3Cline x1='21' y1='25' x2='29' y2='25' stroke='%23520000' stroke-width='1'/%3E%3C/svg%3E");
-    }
     #ui {
       position: fixed;
       inset: 0;
@@ -187,7 +180,7 @@
     #loader {
       position: fixed;
       inset: 0;
-      background: #070000;
+      background: #000;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -240,7 +233,6 @@
   </script>
 </head>
 <body>
-<div id="grid-bg"></div>
 <div id="loader">
   <div class="spinner"></div>
   <span id="loader-text">Loading</span>
@@ -341,7 +333,7 @@
       frontMemberIdx = Math.max(0, Math.min(M - 1, frontMemberIdx + dir));
       const frontSlot = ((prevStep % SLOTS) + SLOTS) % SLOTS;
       const backSlot  = (frontSlot + HALF) % SLOTS;
-      setSlot(frontSlot, frontMemberIdx); // restore front slot — backSlot wraps and may have corrupted it
+      // target may be out of range — setSlot will hide it
       setSlot(backSlot, dir > 0 ? frontMemberIdx + HALF : frontMemberIdx - HALF);
     }
   }
@@ -482,7 +474,7 @@
   document.body.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x070000);
+  scene.background = new THREE.Color(0x000000);
 
   const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.01, 100);
   camera.position.set(0, 0, 4);
@@ -499,53 +491,6 @@
     0.5    // threshold
   );
   composer.addPass(bloomPass);
-
-  // — grid hyperparameters —
-  const GRID_CELL_PX      = 150;      // canvas tile resolution (px) — increase for sharper crosses at high zoom
-  const GRID_CROSS_ARM    = 10;        // "+" arm half-length in canvas pixels
-  const GRID_LINE_WIDTH   = 1.5;      // stroke thickness in canvas pixels
-  const GRID_BLUR_PX      = 2;        // soft-edge blur radius on crosses (px) — 0 = crisp, higher = more halo
-  const GRID_REPEAT       = 55;       // tile repeats on the plane — higher = denser grid, lower = bigger spacing
-  const GRID_EMISSIVE     = 0xff3300; // glow color
-  const GRID_GLOW_BASE    = 1.0;      // resting emissiveIntensity
-  const GRID_BREATH_DEPTH = 8;        // breathY multiplier — scales how much the grid pulses with the head
-  const GRID_ZOOM_DEPTH    = 0.06;    // scale fraction per breathY unit
-  const GRID_DRIFT_SPEED   = 0.3;     // world units/sec at full mouse deflection (NDC ±1)
-  const GRID_DRIFT_TC      = 0.9;     // velocity lerp time-constant — higher = more floaty/sluggish
-
-  // EVA-style "+" grid plane rendered inside the scene
-  let gridMat = null;
-  let gridPlane = null;
-  let gridVX = 0, gridVY = 0; // current drift velocity
-  let gridPX = 0, gridPY = 0; // accumulated drift position
-  (function() {
-    const gc = document.createElement('canvas');
-    gc.width = GRID_CELL_PX; gc.height = GRID_CELL_PX;
-    const gx = gc.getContext('2d');
-    gx.fillStyle = '#000000';
-    gx.fillRect(0, 0, GRID_CELL_PX, GRID_CELL_PX);
-    gx.filter = `blur(${GRID_BLUR_PX}px)`;
-    gx.strokeStyle = '#ffffff';
-    gx.lineWidth = GRID_LINE_WIDTH;
-    const cx = GRID_CELL_PX / 2, cy = GRID_CELL_PX / 2;
-    gx.beginPath(); gx.moveTo(cx - GRID_CROSS_ARM, cy); gx.lineTo(cx + GRID_CROSS_ARM, cy); gx.stroke();
-    gx.beginPath(); gx.moveTo(cx, cy - GRID_CROSS_ARM); gx.lineTo(cx, cy + GRID_CROSS_ARM); gx.stroke();
-    const gt = new THREE.CanvasTexture(gc);
-    gt.wrapS = THREE.RepeatWrapping;
-    gt.wrapT = THREE.RepeatWrapping;
-    gt.repeat.set(GRID_REPEAT, GRID_REPEAT);
-    gridMat = new THREE.MeshStandardMaterial({
-      color: 0x070000,
-      emissive: GRID_EMISSIVE,
-      emissiveMap: gt,
-      emissiveIntensity: GRID_GLOW_BASE,
-      roughness: 1,
-      metalness: 0,
-    });
-    gridPlane = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), gridMat);
-    gridPlane.position.z = -4;
-    scene.add(gridPlane);
-  })();
 
   const mouse = new THREE.Vector2(0, 0);
   window.addEventListener('mousemove', e => {
@@ -754,17 +699,6 @@
 
       // breathY ∈ [-0.07, +0.07], already RC-smoothed — drives emissive/bloom symmetrically around base
       emissiveMats.forEach(({ mat, base }) => { mat.emissiveIntensity = 0.8 * base + breathY * 10; });
-      if (gridMat) {
-        gridMat.emissiveIntensity = GRID_GLOW_BASE + breathY * GRID_BREATH_DEPTH;
-        const gt = gridMat.emissiveMap;
-        // Drift: shift UV offset instead of moving the plane — wraps infinitely
-        const alpha = 1 - Math.exp(-dt / GRID_DRIFT_TC);
-        gridVX += (-mouse.x * GRID_DRIFT_SPEED - gridVX) * alpha;
-        gridVY += (-mouse.y * GRID_DRIFT_SPEED - gridVY) * alpha;
-        gridPX += gridVX * dt;
-        gridPY += gridVY * dt;
-        gt.offset.set(gridPX * GRID_REPEAT / 30, gridPY * GRID_REPEAT / 30);
-      }
       bloomPass.strength = 0.5 + breathY * 5;
 
       // Mouse position spring → mousePos
